@@ -51,7 +51,8 @@
       "template_name": "{{ user `artifact_name` }}",
       "type": "proxmox-iso",
       "unmount_iso": "{{user `unmount_iso`}}",
-      "vm_id": "{{user `vmid`}}"
+      "vm_id": "{{user `vmid`}}",
+      "qemu_agent": true
     }
   ],
   "post-processors": [
@@ -76,6 +77,9 @@
         "if [ $BUILD_NAME != \"ubuntu\" ]; then exit 0; fi",
         "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
         "sudo apt-get -qq update",
+        "sudo sh -c \"echo '#!/bin/sh' > /usr/sbin/policy-rc.d && echo 'exit 101' >> /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d\"",
+        "sudo mkdir -p /etc/needrestart/conf.d",
+        "sudo sh -c \"echo '\\$nrconf{restart} = \\\"l\\\";' > /etc/needrestart/conf.d/no-restart.conf\"",
         "echo done"
       ],
       "inline_shebang": "/bin/bash -e",
@@ -111,7 +115,7 @@
     {
       "expect_disconnect": true,
       "inline": [
-        "sudo reboot now"
+        "nohup bash -c 'sleep 5 && reboot' &"
       ],
       "inline_shebang": "/bin/bash -e",
       "type": "shell"
@@ -131,7 +135,7 @@
         "--scp-extra-args",
         "{{user `ansible_scp_extra_args`}}"
       ],
-      "pause_before": "10s",
+      "pause_before": "90s",
       "playbook_file": "./ansible/node.yml",
       "type": "ansible",
       "user": "builder"
